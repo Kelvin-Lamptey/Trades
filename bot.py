@@ -22,7 +22,7 @@ def place_trade(action, volume, entry, sl, tp):
     # Define the trade parameters (Order details)
     trade_data = {
         "actionType": "ORDER_TYPE_BUY" if action.lower() == 'buy' else "ORDER_TYPE_SELL",
-        "symbol": "XAUUSD",  # Gold against USD
+        "symbol": "XAUUSDm",  # Gold against USD
         "volume": volume,  # Lot size (0.01 as requested)
         "takeProfit": tp,  # Take profit value
         "stopLoss": sl,    # Stop loss value
