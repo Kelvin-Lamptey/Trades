@@ -16,7 +16,16 @@ if not API_KEY or not ACCOUNT_ID or not SERVER:
 BASE_URL = 'https://mt-client-api-v1.london.agiliumtrade.ai/users/current/accounts/'
 
 # Function to place a trade using the new API
-def place_trade(action, volume, entry, sl, tp):
+def place_trade(action, volume, entry, sl, tp, signal_id):
+    with open('file.txt', 'r') as file:
+        lines = file.readlines()
+    # Each line will be an element in the list
+    # Optionally, you can strip the newline character from each line
+        lines = [line.strip() for line in lines]
+        if str(signal_id) in lines:
+            print("Already traded signal")
+            return
+
     print(f"Placing trade: Action={action}, Symbol=XAUUSD, Volume={volume}, Entry={entry}, SL={sl}, TP={tp}")
 
     # Define the trade parameters (Order details)
@@ -41,6 +50,8 @@ def place_trade(action, volume, entry, sl, tp):
 
     if response.status_code == 200:
         print("Trade placed successfully.")
+        with open('file.txt', 'a') as file:
+            file.write(signal_id+"\n")
         trade_response = response.json()
         print(f"Trade response: {trade_response}")
 
@@ -86,10 +97,11 @@ def detect_signals(data):
             description = post['news_description'].lower()
 
             # Detect buy/sell signals based on description
-            if 'buy' in description or 'sell' in description:
+            if ('buy' in description or 'sell' in description) and "active" in description:
                 print(f"Signal detected: {description}")
                 entry, tps, sl = extract_tp_sl(post['news_description'])
-
+                nid = post['nid']
+                
                 if entry and tps:  # Ensure there's an entry and TP values
                     # Choose the safest TP (closest to the entry price)
                     safest_tp = min(tps, key=lambda x: abs(x - entry))
@@ -99,8 +111,10 @@ def detect_signals(data):
                         'action': 'buy' if 'buy' in description else 'sell',
                         'entry': entry,
                         'tp': safest_tp,
-                        'sl': sl
+                        'sl': sl,
+                        'nid':nid
                     })
+                    break
     else:
         print("No valid signals detected.")
     return signals
@@ -127,10 +141,11 @@ def fetch_signals_and_trade():
                 entry = signal['entry']
                 sl = signal['sl']
                 tp = signal['tp']
+                nid = signal['nid']
 
                 # Place the trade on the new MetaApi endpoint using the updated API
                 print(f"Placing trade for signal: {signal}")
-                result = place_trade(action, volume=0.01, entry=entry, sl=sl, tp=tp)
+                result = place_trade(action, volume=0.01, entry=entry, sl=sl, tp=tp, signal_id=nid)
                 print(f"Trade result: {result}")
         else:
             print("No signals available for trading.")
