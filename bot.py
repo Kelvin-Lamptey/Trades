@@ -152,6 +152,8 @@ def run_trade():
         run()
         return "Trade executed successfully!", 200
     except Exception as e:
+        print("------------------\n",str(e), "\n----------------------")
+        return "Error", 500
         return f"Error: {str(e)}", 500
 
 if __name__ == '__main__':
