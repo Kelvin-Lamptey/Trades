@@ -17,14 +17,14 @@ BASE_URL = 'https://mt-client-api-v1.london.agiliumtrade.ai/users/current/accoun
 
 # Function to place a trade using the new API
 def place_trade(action, volume, entry, sl, tp, signal_id):
-    with open('file.txt', 'r') as file:
+    '''with open('file.txt', 'r') as file:
         lines = file.readlines()
     # Each line will be an element in the list
     # Optionally, you can strip the newline character from each line
         lines = [line.strip() for line in lines]
         if str(signal_id) in lines:
             print("Already traded signal")
-            return
+            return'''
 
     print(f"Placing trade: Action={action}, Symbol=XAUUSD, Volume={volume}, Entry={entry}, SL={sl}, TP={tp}")
 
