@@ -1,30 +1,46 @@
 import os
 import requests
 import re
+import mysql.connector
 from flask import Flask
 
-# Get MetaApi Credentials from environment variables
+# Get MetaApi and SQL credentials from environment variables
 API_KEY = os.getenv("META_API_KEY")
 ACCOUNT_ID = os.getenv("META_API_ACCOUNT_ID")
 SERVER = os.getenv("META_API_SERVER")
 
-# Check if the environment variables are set
-if not API_KEY or not ACCOUNT_ID or not SERVER:
-    raise ValueError("API_KEY, ACCOUNT_ID, or SERVER is not set in environment variables")
+SQL_HOST = os.getenv("SQL_HOST")
+SQL_USER = os.getenv("SQL_USER")
+SQL_PASSWORD = os.getenv("SQL_PASSWORD")
+SQL_DB = os.getenv("SQL_DB")
 
-# MetaApi Base URL for REST API
-BASE_URL = 'https://mt-client-api-v1.london.agiliumtrade.ai/users/current/accounts/'
+# Check if the environment variables are set
+if not API_KEY or not ACCOUNT_ID or not SERVER or not SQL_HOST or not SQL_USER or not SQL_PASSWORD or not SQL_DB:
+    raise ValueError("API_KEY, ACCOUNT_ID, SERVER, SQL_HOST, SQL_USER, SQL_PASSWORD, or SQL_DB is not set in environment variables")
+
+# Establish SQL connection
+def get_db_connection():
+    connection = mysql.connector.connect(
+        host=SQL_HOST,
+        user=SQL_USER,
+        password=SQL_PASSWORD,
+        database=SQL_DB
+    )
+    return connection
 
 # Function to place a trade using the new API
 def place_trade(action, volume, entry, sl, tp, signal_id):
-    '''with open('file.txt', 'r') as file:
-        lines = file.readlines()
-    # Each line will be an element in the list
-    # Optionally, you can strip the newline character from each line
-        lines = [line.strip() for line in lines]
-        if str(signal_id) in lines:
-            print("Already traded signal")
-            return'''
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    # Check if the signal_id has already been traded
+    cursor.execute("SELECT signal_id FROM trades WHERE signal_id = %s", (signal_id,))
+    result = cursor.fetchone()
+    if result:
+        print("Already traded signal")
+        cursor.close()
+        connection.close()
+        return
 
     print(f"Placing trade: Action={action}, Symbol=XAUUSD, Volume={volume}, Entry={entry}, SL={sl}, TP={tp}")
 
@@ -50,9 +66,14 @@ def place_trade(action, volume, entry, sl, tp, signal_id):
 
     if response.status_code == 200:
         print("Trade placed successfully.")
-        with open('file.txt', 'a') as file:
-            file.write(signal_id+"\n")
         trade_response = response.json()
+
+        # Store the trade details in the database
+        cursor.execute(
+            "INSERT INTO trades (signal_id, action, entry, stop_loss, take_profit, status) VALUES (%s, %s, %s, %s, %s, %s)",
+            (signal_id, action, entry, sl, tp, "success")
+        )
+        connection.commit()
         print(f"Trade response: {trade_response}")
 
         # Check if the response indicates a successful trade
@@ -62,7 +83,15 @@ def place_trade(action, volume, entry, sl, tp, signal_id):
             print(f"Error in trade: {trade_response.get('message', 'Unknown error')}")
     else:
         print(f"Error placing trade: {response.status_code} - {response.text}")
-        raise Exception(f"Error placing trade: {response.text}")
+        # Log the error in the database
+        cursor.execute(
+            "INSERT INTO trades (signal_id, action, entry, stop_loss, take_profit, status) VALUES (%s, %s, %s, %s, %s, %s)",
+            (signal_id, action, entry, sl, tp, "failed")
+        )
+        connection.commit()
+
+    cursor.close()
+    connection.close()
 
 # Function to extract TP and SL using regex
 def extract_tp_sl(description):
@@ -70,9 +99,6 @@ def extract_tp_sl(description):
 
     # Remove HTML tags to work with plain text
     clean_description = re.sub(r'<.*?>', '', description)
-
-    # Debug output to verify cleaned description
-    print(f"Clean description: {clean_description}")
 
     # Extract entry price, stop loss (SL), and take profits (TP) using refined regex
     entry_match = re.search(r'@\s?(\d+)', clean_description)
@@ -83,7 +109,6 @@ def extract_tp_sl(description):
     tps = [float(tp) for tp in tp_matches]  # Convert TPs to floats
     sl = float(sl_match.group(1)) if sl_match else None
 
-    # Debug output to verify extracted values
     print(f"Extracted values: Entry={entry_price}, TPs={tps}, SL={sl}")
     return entry_price, tps, sl
 
@@ -96,14 +121,12 @@ def detect_signals(data):
         for post in data['posts']:
             description = post['news_description'].lower()
 
-            # Detect buy/sell signals based on description
             if ('buy' in description or 'sell' in description) and "active" in description:
                 print(f"Signal detected: {description}")
                 entry, tps, sl = extract_tp_sl(post['news_description'])
                 nid = post['nid']
                 
                 if entry and tps:  # Ensure there's an entry and TP values
-                    # Choose the safest TP (closest to the entry price)
                     safest_tp = min(tps, key=lambda x: abs(x - entry))
                     print(f"Safest TP selected: {safest_tp}")
 
@@ -112,7 +135,7 @@ def detect_signals(data):
                         'entry': entry,
                         'tp': safest_tp,
                         'sl': sl,
-                        'nid':nid
+                        'nid': nid
                     })
                     break
     else:
@@ -143,10 +166,8 @@ def fetch_signals_and_trade():
                 tp = signal['tp']
                 nid = signal['nid']
 
-                # Place the trade on the new MetaApi endpoint using the updated API
                 print(f"Placing trade for signal: {signal}")
-                result = place_trade(action, volume=0.01, entry=entry, sl=sl, tp=tp, signal_id=nid)
-                print(f"Trade result: {result}")
+                place_trade(action, volume=0.01, entry=entry, sl=sl, tp=tp, signal_id=nid)
         else:
             print("No signals available for trading.")
     else:
@@ -163,14 +184,16 @@ app = Flask(__name__)
 @app.route('/run-trade', methods=['GET'])
 def run_trade():
     try:
-        # Example: replace with your script logic
         run()
         return "Trade executed successfully!", 200
     except Exception as e:
-        with open("error.txt",'a') as file:
-            file.write(str(e))
-        print("------------------\n",str(e), "\n----------------------")
-        return "Error", 500
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("INSERT INTO errors (error_message) VALUES (%s)", (str(e),))
+        connection.commit()
+        cursor.close()
+        connection.close()
+        print(f"Error: {str(e)}")
         return f"Error: {str(e)}", 500
 
 if __name__ == '__main__':
