@@ -95,7 +95,7 @@ def detect_signals(data):
         for post in data['posts']:
             description = post['news_description'].lower()
 
-            if ('buy' in description or 'sell' in description) and ("active" in description) and ("gold" in description):
+            if ('buy' in description or 'sell' in description) and ("active" in description):
                 print(f"Signal detected: {description}")
                 entry, tps, sl = extract_tp_sl(post['news_description'])
                 nid = post['nid']
