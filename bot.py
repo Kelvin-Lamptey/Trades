@@ -1,45 +1,30 @@
 import os
 import requests
 import re
-import mysql.connector
+import redis
 from flask import Flask
+import json
 
-# Get MetaApi and SQL credentials from environment variables
+# Get MetaApi and Redis credentials from environment variables
 API_KEY = os.getenv("META_API_KEY")
 ACCOUNT_ID = os.getenv("META_API_ACCOUNT_ID")
 SERVER = os.getenv("META_API_SERVER")
 
-SQL_HOST = os.getenv("SQL_HOST")
-SQL_USER = os.getenv("SQL_USER")
-SQL_PASSWORD = os.getenv("SQL_PASSWORD")
-SQL_DB = os.getenv("SQL_DB")
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
 # Check if the environment variables are set
-if not API_KEY or not ACCOUNT_ID or not SERVER or not SQL_HOST or not SQL_USER or not SQL_PASSWORD or not SQL_DB:
-    raise ValueError("API_KEY, ACCOUNT_ID, SERVER, SQL_HOST, SQL_USER, SQL_PASSWORD, or SQL_DB is not set in environment variables")
+if not API_KEY or not ACCOUNT_ID or not SERVER:
+    raise ValueError("API_KEY, ACCOUNT_ID, or SERVER is not set in environment variables")
 
-# Establish SQL connection
-def get_db_connection():
-    connection = mysql.connector.connect(
-        host=SQL_HOST,
-        user=SQL_USER,
-        password=SQL_PASSWORD,
-        database=SQL_DB
-    )
-    return connection
+# Initialize Redis connection
+redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 
 # Function to place a trade using the new API
 def place_trade(action, volume, entry, sl, tp, signal_id):
-    connection = get_db_connection()
-    cursor = connection.cursor()
-
-    # Check if the signal_id has already been traded
-    cursor.execute("SELECT signal_id FROM trades WHERE signal_id = %s", (signal_id,))
-    result = cursor.fetchone()
-    if result:
+    # Check if the signal_id has already been traded (using Redis)
+    if redis_client.get(f"trade:{signal_id}"):
         print("Already traded signal")
-        cursor.close()
-        connection.close()
         return
 
     print(f"Placing trade: Action={action}, Symbol=XAUUSD, Volume={volume}, Entry={entry}, SL={sl}, TP={tp}")
@@ -68,12 +53,14 @@ def place_trade(action, volume, entry, sl, tp, signal_id):
         print("Trade placed successfully.")
         trade_response = response.json()
 
-        # Store the trade details in the database
-        cursor.execute(
-            "INSERT INTO trades (signal_id, action, entry, stop_loss, take_profit, status) VALUES (%s, %s, %s, %s, %s, %s)",
-            (signal_id, action, entry, sl, tp, "success")
-        )
-        connection.commit()
+        # Store the trade details in Redis (convert data to JSON)
+        redis_client.set(f"trade:{signal_id}", json.dumps({
+            "action": action,
+            "entry": entry,
+            "stop_loss": sl,
+            "take_profit": tp,
+            "status": "success"
+        }))
         print(f"Trade response: {trade_response}")
 
         # Check if the response indicates a successful trade
@@ -83,15 +70,14 @@ def place_trade(action, volume, entry, sl, tp, signal_id):
             print(f"Error in trade: {trade_response.get('message', 'Unknown error')}")
     else:
         print(f"Error placing trade: {response.status_code} - {response.text}")
-        # Log the error in the database
-        cursor.execute(
-            "INSERT INTO trades (signal_id, action, entry, stop_loss, take_profit, status) VALUES (%s, %s, %s, %s, %s, %s)",
-            (signal_id, action, entry, sl, tp, "failed")
-        )
-        connection.commit()
-
-    cursor.close()
-    connection.close()
+        # Log the error in Redis
+        redis_client.set(f"trade:{signal_id}", json.dumps({
+            "action": action,
+            "entry": entry,
+            "stop_loss": sl,
+            "take_profit": tp,
+            "status": "failed"
+        }))
 
 # Function to extract TP and SL using regex
 def extract_tp_sl(description):
@@ -123,78 +109,4 @@ def detect_signals(data):
 
             if ('buy' in description or 'sell' in description) and "active" in description:
                 print(f"Signal detected: {description}")
-                entry, tps, sl = extract_tp_sl(post['news_description'])
-                nid = post['nid']
-                
-                if entry and tps:  # Ensure there's an entry and TP values
-                    safest_tp = min(tps, key=lambda x: abs(x - entry))
-                    print(f"Safest TP selected: {safest_tp}")
-
-                    signals.append({
-                        'action': 'buy' if 'buy' in description else 'sell',
-                        'entry': entry,
-                        'tp': safest_tp,
-                        'sl': sl,
-                        'nid': nid
-                    })
-                    break
-    else:
-        print("No valid signals detected.")
-    return signals
-
-# Function to fetch Forex signals and trigger trades
-def fetch_signals_and_trade():
-    print("Fetching Forex signals from the API...")
-    api_url = 'https://alert.infipip.com/api/api.php?get_recent_posts&api_key=cda11v2OkqSI1rhQm37PBXKnpisMtlaDzoc4w0U6uNATgZRbJG&page=1&count=3'
-    headers = {
-        'cache-control': 'max-age=0',
-        'data-agent': 'Android News App',
-        'user-agent': 'okhttp/4.10.0'
-    }
-
-    response = requests.get(api_url, headers=headers)
-    if response.status_code == 200:
-        print("Signals fetched successfully.")
-        data = response.json()
-        signals = detect_signals(data)
-
-        if signals:
-            for signal in signals:
-                action = signal['action']
-                entry = signal['entry']
-                sl = signal['sl']
-                tp = signal['tp']
-                nid = signal['nid']
-
-                print(f"Placing trade for signal: {signal}")
-                place_trade(action, volume=0.01, entry=entry, sl=sl, tp=tp, signal_id=nid)
-        else:
-            print("No signals available for trading.")
-    else:
-        print(f"Error fetching API: {response.status_code} - {response.text}")
-
-# Main entry point
-def run():
-    print("Starting the trading script...")
-    fetch_signals_and_trade()
-    print("Script finished.")
-
-app = Flask(__name__)
-
-@app.route('/run-trade', methods=['GET'])
-def run_trade():
-    try:
-        run()
-        return "Trade executed successfully!", 200
-    except Exception as e:
-        connection = get_db_connection()
-        cursor = connection.cursor()
-        cursor.execute("INSERT INTO errors (error_message) VALUES (%s)", (str(e),))
-        connection.commit()
-        cursor.close()
-        connection.close()
-        print(f"Error: {str(e)}")
-        return f"Error: {str(e)}", 500
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80)
+               
