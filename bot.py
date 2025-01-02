@@ -90,11 +90,13 @@ def extract_tp_sl(description):
 def detect_signals(data):
     print("Detecting signals from fetched data...")
     signals = []
+    
 
     if data.get('status') == 'ok' and 'posts' in data:
         for post in data['posts']:
             description = post['news_description'].lower()
-
+            print(description)
+            
             if ('buy' in description or 'sell' in description) and ("active" in description):
                 print(f"Signal detected: {description}")
                 entry, tps, sl = extract_tp_sl(post['news_description'])
