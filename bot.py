@@ -132,7 +132,7 @@ def fetch_signals_and_trade():
 # Function to fetch and print all positions
 def fetch_positions():
     print("Fetching current positions from the API...")
-    url = f'https://mt-client-api-v1.new-york.agiliumtrade.ai/users/current/accounts/{ACCOUNT_ID}/positions'
+    url = f'https://mt-client-api-v1.london.agiliumtrade.ai/users/current/accounts/{ACCOUNT_ID}/positions'
     headers = {
         'Accept': 'application/json',
         'auth-token': API_KEY
