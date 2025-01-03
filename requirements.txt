@@ -1,5 +1,3 @@
 flask
 requests
 gunicorn==19.7.1
-requests-html
-lxml_html_clean
