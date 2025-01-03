@@ -78,7 +78,7 @@ def extract_tp_sl(description):
 
 def extract_trade_details(news_description):
     # Regex patterns to match prices, stop loss, and take profits
-    price_pattern = r"\$([0-9]+(?:\.[0-9]+)?)"
+    price_pattern = r"Trade\s*\$([0-9]+(?:\.[0-9]+)?)"
     stop_loss_pattern = r"Stop loss\s*\$([0-9]+(?:\.[0-9]+)?)"
     take_profit_pattern = r"Take Profit\s*\$([0-9]+(?:\.[0-9]+)?)"
 
