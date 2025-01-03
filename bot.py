@@ -66,7 +66,7 @@ def extract_tp_sl(description):
     #tp_matches = re.findall(r'Take\s?Profit\s?(\d+)', clean_description, re.IGNORECASE)
     #sl_match = re.search(r'Stop\s?Loss\s?(\d+)', clean_description, re.IGNORECASE)
 
-    entry_match, sl_match, tp_matches = extract_trade_details(clean_description))
+    entry_match, sl_match, tp_matches = extract_trade_details(clean_description)
     entry_match = entry_match[0]
     sl_match = sl_match[0]
     
