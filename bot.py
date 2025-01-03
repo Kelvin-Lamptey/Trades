@@ -66,6 +66,7 @@ def extract_tp_sl(description):
     tp_matches = re.findall(r'Take Profit\s?(\d+)', clean_description, re.IGNORECASE)
     sl_match = re.search(r'Stop Loss\s?(\d+)', clean_description, re.IGNORECASE)
 
+    print(extract_trade_details(clean_description))
 
     
     entry_price = float(entry_match.group(1)) if entry_match else None
@@ -74,6 +75,19 @@ def extract_tp_sl(description):
 
     print(f"Extracted values: Entry={entry_price}, TPs={tps}, SL={sl}")
     return entry_price, tps, sl
+
+def extract_trade_details(news_description):
+    # Regex patterns to match prices, stop loss, and take profits
+    price_pattern = r"\$([0-9]+(?:\.[0-9]+)?)"
+    stop_loss_pattern = r"Stop loss\s*\$([0-9]+(?:\.[0-9]+)?)"
+    take_profit_pattern = r"Take Profit\s*\$([0-9]+(?:\.[0-9]+)?)"
+
+    # Find all occurrences of prices, stop losses, and take profits
+    prices = re.findall(price_pattern, news_description)
+    stop_losses = re.findall(stop_loss_pattern, news_description)
+    take_profits = re.findall(take_profit_pattern, news_description)
+
+    return prices, stop_losses, take_profits
 
 # Function to detect signals from the Forex signals API
 def detect_signals(data):
