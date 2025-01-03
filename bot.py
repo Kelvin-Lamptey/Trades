@@ -196,9 +196,9 @@ def same_as_last_trade(action, volume,sl, tp):
         history = get_history(time, back_by_three);
         last_history = history[-1]
         print(f"comparing, {act[action]},{volume}, {sl}, {tp}")
-        print(f"with, {last_history['type']}, {last_history['volume']}, {last_history['stopLoss']}, {last_history['takeProfit']}")
+        print(f"with, {last_history['type']}, {float(last_history['volume'])}, {float(last_history['stopLoss'])}, {float(last_history['takeProfit'])}")
         print()
-        if act[action] == history['type'] and volume == float(last_history['volume']) and sl == last_history['stopLoss'] and tp == last_history['takeProfit']:
+        if act[action] == last_history['type'] and volume == float(last_history['volume']) and sl == float(last_history['stopLoss']) and tp == float(last_history['takeProfit']):
             print("Signal already in history")
             return True
         return False
