@@ -8,7 +8,7 @@ API_KEY = os.getenv("META_API_KEY")
 ACCOUNT_ID = os.getenv("META_API_ACCOUNT_ID")
 SERVER = os.getenv("META_API_SERVER")
 BASE_URL = f'https://mt-client-api-v1.london.agiliumtrade.ai/users/current/accounts/{ACCOUNT_ID}/'
-
+SIGNAL_URL = os.getenv("SIGNAL_URL",'https://alert.infipip.com/api/api.php?get_recent_posts&api_key=cda11v2OkqSI1rhQm37PBXKnpisMtlaDzoc4w0U6uNATgZRbJG&page=1&count=3')
 # Check if environment variables are set
 if not API_KEY or not ACCOUNT_ID or not SERVER:
     raise ValueError("API_KEY, ACCOUNT_ID, or SERVER is not set in environment variables")
@@ -114,7 +114,7 @@ def detect_signals(data):
 # Function to fetch Forex signals and trigger trades
 def fetch_signals_and_trade():
     print("Fetching Forex signals from the API...")
-    api_url = 'https://alert.infipip.com/api/api.php?get_recent_posts&api_key=cda11v2OkqSI1rhQm37PBXKnpisMtlaDzoc4w0U6uNATgZRbJG&page=1&count=3'
+    api_url = SIGNAL_URL
     headers = {
         'cache-control': 'max-age=0',
         'data-agent': 'Android News App',
@@ -180,10 +180,8 @@ def same_as_last_trade(action, volume,sl, tp):
         print()
         if act[action] == history['type'] and volume == float(history['volume']) and sl == history['stopLoss'] and tp == history['takeProfit']:
             return True
-        else:
-            print("Signal already in history")
-            return False
-        return f"Time is: {time} and history: {history}", 200
+        print("Signal already in history")
+        return False
     except Exception as e:
         print(f"Error: {str(e)}")
         return False
