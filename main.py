@@ -30,6 +30,9 @@ def visit_trades_info():
         # Print the page source (HTML response)
         page_source = response.text
 
+        response = session.get('http://trades.infy.uk/tradesinfo.php?i=1')
+
+
         response.html.render()
 
         print("Page Source:")
