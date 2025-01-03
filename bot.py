@@ -16,7 +16,9 @@ if not API_KEY or not ACCOUNT_ID or not SERVER:
 # Function to place a trade using the new API
 def place_trade(action, volume, entry, sl, tp, signal_id):
     print(f"Placing trade: Action={action}, Symbol=XAUUSD, Volume={volume}, Entry={entry}, SL={sl}, TP={tp}")
-
+    if same_as_last_trade(action,volume,sl,tp):
+        pass
+        
     # Define the trade parameters (Order details)
     trade_data = {
         "actionType": "ORDER_TYPE_BUY" if action.lower() == 'buy' else "ORDER_TYPE_SELL",
@@ -164,6 +166,28 @@ def fetch_positions():
             print('-' * 40)
     else:
         print(f"Error fetching positions: {response.status_code} - {response.text}")
+def same_as_last_trade(action, volume,sl, tp):
+    time=None
+    act={'buy':"ORDER_TYPE_BUY",'sell':"ORDER_TYPE_SELL"}
+    try:
+        action = action.lower()
+        time = get_time()
+        back_by_three = offset_by_days(time, 3)
+        history = get_history(time, back_by_three);
+        last_history = history[-1]
+        print(f"comparing, {action},{volume}, {sl}, {tp}")
+        print(f"with, {last_history['type']}, {last_history['volume']}, {last_history['stopLoss']}, {last_history['takeProfit']}")
+        print()
+        if act[action] == history['type'] and volume == float(history['volume']) and sl == history['stopLoss'] and tp == history['takeProfit']:
+            return True
+        else:
+            print("Signal already in history")
+            return False
+        return f"Time is: {time} and history: {history}", 200
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return False
+
 
 from datetime import datetime, timedelta
 
