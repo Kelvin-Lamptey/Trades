@@ -165,11 +165,45 @@ def fetch_positions():
     else:
         print(f"Error fetching positions: {response.status_code} - {response.text}")
 
+from datetime import datetime, timedelta
+
+def offset_by_days(time_str, n):
+    # Convert the ISO 8601 formatted time string to a datetime object
+    dt = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+    # Offset the datetime object by 'n' days
+    offset_dt = dt - timedelta(days=n)
+    # Return the offset datetime object in ISO 8601 format
+    return offset_dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+def get_history( t1, t2):
+    print(f"Fetching history between {t2} and {t1} from the API...")
+    url = f'{BASE_URL}history-orders/time/{t2}/{t1}'
+    headers = {
+        'Accept': 'application/json',
+        'auth-token': API_KEY
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        history_orders = response.json()
+        return history_orders
+
+def get_time():
+    print("Fetching current time from the API...")
+    url = f'{BASE_URL}server-time'
+    headers = {
+        'Accept': 'application/json',
+        'auth-token': API_KEY
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        time = response.json()
+        return time['time']
+
 # Main entry point
 def run():
     print("Starting the trading script...")
     if fetch_positions() != []:
-        print("A position is opened alreadu")
+        print("A position is alreafy opened")
         return
     fetch_signals_and_trade()
     print("Script finished.")
@@ -181,6 +215,18 @@ def run_trade():
     try:
         run()
         return "Trade executed successfully!", 200
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return f"Error: {str(e)}", 500
+
+@app.route('/time', methods=['GET'])
+def time():
+    time=None
+    try:
+        time = get_time()
+        back_by_three = offset_by_days(time, 3)
+        history = get_history(time, back_by_three);
+        return f"Time is: {time} and history: {history}", 200
     except Exception as e:
         print(f"Error: {str(e)}")
         return f"Error: {str(e)}", 500
