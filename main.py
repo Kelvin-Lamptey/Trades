@@ -22,7 +22,7 @@ def visit_trades_info():
 
     try:
         # Send a GET request to the URL
-        response = session.get('https://trades.infy.uk/tradesinfo.php')
+        response = session.get('http://trades.infy.uk/tradesinfo.php')
 
         # Allow the page to load fully (if JavaScript rendering is required)
         response.html.render()
