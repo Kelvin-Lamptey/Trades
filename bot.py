@@ -67,8 +67,8 @@ def extract_tp_sl(description):
     #sl_match = re.search(r'Stop\s?Loss\s?(\d+)', clean_description, re.IGNORECASE)
 
     entry_match, sl_match, tp_matches = extract_trade_details(clean_description)
-    entry_price = entry_match[0]
-    sl = sl_match[0]
+    entry_price = float(entry_match[0])
+    sl = float(sl_match[0])
     
     #entry_price = float(entry_match.group(1)) if entry_match else None
     tps = [float(tp) for tp in tp_matches]  # Convert TPs to floats
