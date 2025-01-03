@@ -1,4 +1,4 @@
 flask
 requests
 gunicorn==19.7.1
-redis
+requests-html
