@@ -59,10 +59,15 @@ def extract_tp_sl(description):
     clean_description = re.sub(r'<.*?>', '', description)
 
     # Extract entry price, stop loss (SL), and take profits (TP) using refined regex
-    entry_match = re.search(r'@\s?(\d+)', clean_description)
-    tp_matches = re.findall(r'TP\s?(\d+)', clean_description, re.IGNORECASE)
-    sl_match = re.search(r'SL\s?(\d+)', clean_description, re.IGNORECASE)
+    #entry_match = re.search(r'@\s?(\d+)', clean_description)
+    #tp_matches = re.findall(r'TP\s?(\d+)', clean_description, re.IGNORECASE)
+    #sl_match = re.search(r'SL\s?(\d+)', clean_description, re.IGNORECASE)
+    entry_match = re.search(r'Trade\s?(\d+)', clean_description)
+    tp_matches = re.findall(r'Take Profit\s?(\d+)', clean_description, re.IGNORECASE)
+    sl_match = re.search(r'Stop Loss\s?(\d+)', clean_description, re.IGNORECASE)
 
+
+    
     entry_price = float(entry_match.group(1)) if entry_match else None
     tps = [float(tp) for tp in tp_matches]  # Convert TPs to floats
     sl = float(sl_match.group(1)) if sl_match else None
