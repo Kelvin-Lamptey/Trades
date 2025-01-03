@@ -29,7 +29,12 @@ def visit_trades_info():
 
         # Print the page source (HTML response)
         page_source = response.text
+
+        response.html.render()
+
         print("Page Source:")
+        
+        page_source = response.text
         print(page_source)
 
         # Optionally, you can access cookies here:
