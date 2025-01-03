@@ -17,7 +17,7 @@ if not API_KEY or not ACCOUNT_ID or not SERVER:
 def place_trade(action, volume, entry, sl, tp, signal_id):
     print(f"Placing trade: Action={action}, Symbol=XAUUSD, Volume={volume}, Entry={entry}, SL={sl}, TP={tp}")
     if same_as_last_trade(action,volume,sl,tp):
-        pass
+        return
         
     # Define the trade parameters (Order details)
     trade_data = {
@@ -195,12 +195,12 @@ def same_as_last_trade(action, volume,sl, tp):
         back_by_three = offset_by_days(time, 3)
         history = get_history(time, back_by_three);
         last_history = history[-1]
-        print(f"comparing, {action},{volume}, {sl}, {tp}")
+        print(f"comparing, {act[action]},{volume}, {sl}, {tp}")
         print(f"with, {last_history['type']}, {last_history['volume']}, {last_history['stopLoss']}, {last_history['takeProfit']}")
         print()
-        if act[action] == history['type'] and volume == float(history['volume']) and sl == history['stopLoss'] and tp == history['takeProfit']:
+        if act[action] == history['type'] and volume == float(last_history['volume']) and sl == last_history['stopLoss'] and tp == last_history['takeProfit']:
+            print("Signal already in history")
             return True
-        print("Signal already in history")
         return False
     except Exception as e:
         print(f"Error: {str(e)}")
