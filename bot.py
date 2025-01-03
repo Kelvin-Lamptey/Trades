@@ -7,6 +7,7 @@ from flask import Flask
 API_KEY = os.getenv("META_API_KEY")
 ACCOUNT_ID = os.getenv("META_API_ACCOUNT_ID")
 SERVER = os.getenv("META_API_SERVER")
+BASE_URL = f'https://mt-client-api-v1.london.agiliumtrade.ai/users/current/accounts/{ACCOUNT_ID}/'
 
 # Check if environment variables are set
 if not API_KEY or not ACCOUNT_ID or not SERVER:
@@ -26,7 +27,7 @@ def place_trade(action, volume, entry, sl, tp, signal_id):
     }
 
     # Send the trade request to the API
-    url = f'{SERVER}{ACCOUNT_ID}/trade'
+    url = f'{BASE_URL}{ACCOUNT_ID}/trade'
     headers = {
         'auth-token': API_KEY,  # Use API_KEY as the auth token in the header
         'Content-Type': 'application/json',
@@ -132,12 +133,11 @@ def fetch_signals_and_trade():
 # Function to fetch and print all positions
 def fetch_positions():
     print("Fetching current positions from the API...")
-    url = f'https://mt-client-api-v1.london.agiliumtrade.ai/users/current/accounts/{ACCOUNT_ID}/positions'
+    url = f'{BASE_URL}positions'
     headers = {
         'Accept': 'application/json',
         'auth-token': API_KEY
     }
-
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         positions = response.json()
