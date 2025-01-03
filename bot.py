@@ -27,7 +27,7 @@ def place_trade(action, volume, entry, sl, tp, signal_id):
     }
 
     # Send the trade request to the API
-    url = f'{BASE_URL}{ACCOUNT_ID}/trade'
+    url = f'{BASE_URL}trade'
     headers = {
         'auth-token': API_KEY,  # Use API_KEY as the auth token in the header
         'Content-Type': 'application/json',
