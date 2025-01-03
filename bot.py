@@ -76,10 +76,10 @@ def detect_signals(data):
     if data.get('status') == 'ok' and 'posts' in data:
         for post in data['posts']:
             description = post['news_description'].lower()
-            print(description)
+            #print(description)
             
             if ('buy' in description or 'sell' in description) and ("active" in description) and ("btc" not in description):
-                print(f"Signal detected: {description}")
+                print(f"Active signal detected: {description}")
                 entry, tps, sl = extract_tp_sl(post['news_description'])
                 nid = post['nid']
                 
@@ -141,6 +141,7 @@ def fetch_positions():
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         positions = response.json()
+        return positions
         for position in positions:
             print(f"Position ID: {position['id']}")
             print(f"Symbol: {position['symbol']}")
@@ -157,6 +158,9 @@ def fetch_positions():
 # Main entry point
 def run():
     print("Starting the trading script...")
+    if fetch_positions() != []:
+        print("A position is opened alreadu")
+        return
     fetch_signals_and_trade()
     print("Script finished.")
 
