@@ -1,32 +1,19 @@
 import os
 import requests
 import re
-import redis
 from flask import Flask
 
-# Get MetaApi and Redis credentials from environment variables
+# Get MetaApi credentials from environment variables
 API_KEY = os.getenv("META_API_KEY")
 ACCOUNT_ID = os.getenv("META_API_ACCOUNT_ID")
 SERVER = os.getenv("META_API_SERVER")
-
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = os.getenv("REDIS_PORT", 6379)
-REDIS_DB = os.getenv("REDIS_DB", 0)
 
 # Check if environment variables are set
 if not API_KEY or not ACCOUNT_ID or not SERVER:
     raise ValueError("API_KEY, ACCOUNT_ID, or SERVER is not set in environment variables")
 
-# Establish Redis connection
-redis_client = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
-
 # Function to place a trade using the new API
 def place_trade(action, volume, entry, sl, tp, signal_id):
-    # Check if the signal_id has already been traded in Redis
-    if redis_client.sismember("traded_signals", signal_id):
-        print("Already traded signal")
-        return
-
     print(f"Placing trade: Action={action}, Symbol=XAUUSD, Volume={volume}, Entry={entry}, SL={sl}, TP={tp}")
 
     # Define the trade parameters (Order details)
@@ -39,7 +26,7 @@ def place_trade(action, volume, entry, sl, tp, signal_id):
     }
 
     # Send the trade request to the API
-    url = f'{BASE_URL}{ACCOUNT_ID}/trade'
+    url = f'{SERVER}{ACCOUNT_ID}/trade'
     headers = {
         'auth-token': API_KEY,  # Use API_KEY as the auth token in the header
         'Content-Type': 'application/json',
@@ -53,10 +40,6 @@ def place_trade(action, volume, entry, sl, tp, signal_id):
         print("Trade placed successfully.")
         trade_response = response.json()
 
-        # Mark the signal as traded in Redis
-        redis_client.sadd("traded_signals", signal_id)
-        redis_client.hset("trade_results", signal_id, "success")
-
         # Check if the response indicates a successful trade
         if trade_response.get("numericCode") == 10009:  # Check for successful response
             print(f"Trade successful. Order ID: {trade_response['orderId']}")
@@ -64,8 +47,6 @@ def place_trade(action, volume, entry, sl, tp, signal_id):
             print(f"Error in trade: {trade_response.get('message', 'Unknown error')}")
     else:
         print(f"Error placing trade: {response.status_code} - {response.text}")
-        # Log the error in Redis
-        redis_client.hset("trade_results", signal_id, "failed")
 
 # Function to extract TP and SL using regex
 def extract_tp_sl(description):
@@ -91,7 +72,6 @@ def detect_signals(data):
     print("Detecting signals from fetched data...")
     signals = []
     
-
     if data.get('status') == 'ok' and 'posts' in data:
         for post in data['posts']:
             description = post['news_description'].lower()
@@ -149,6 +129,31 @@ def fetch_signals_and_trade():
     else:
         print(f"Error fetching API: {response.status_code} - {response.text}")
 
+# Function to fetch and print all positions
+def fetch_positions():
+    print("Fetching current positions from the API...")
+    url = f'https://mt-client-api-v1.new-york.agiliumtrade.ai/users/current/accounts/{ACCOUNT_ID}/positions'
+    headers = {
+        'Accept': 'application/json',
+        'auth-token': API_KEY
+    }
+
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        positions = response.json()
+        for position in positions:
+            print(f"Position ID: {position['id']}")
+            print(f"Symbol: {position['symbol']}")
+            print(f"Type: {position['type']}")
+            print(f"Open Price: {position['openPrice']}")
+            print(f"Current Price: {position['currentPrice']}")
+            print(f"Profit: {position['profit']}")
+            print(f"Unrealized Profit: {position['unrealizedProfit']}")
+            print(f"Realized Profit: {position['realizedProfit']}")
+            print('-' * 40)
+    else:
+        print(f"Error fetching positions: {response.status_code} - {response.text}")
+
 # Main entry point
 def run():
     print("Starting the trading script...")
@@ -163,11 +168,17 @@ def run_trade():
         run()
         return "Trade executed successfully!", 200
     except Exception as e:
-        # Log the error in Redis
-        redis_client.lpush("errors", str(e))
+        print(f"Error: {str(e)}")
+        return f"Error: {str(e)}", 500
+
+@app.route('/fetch-positions', methods=['GET'])
+def fetch_all_positions():
+    try:
+        fetch_positions()
+        return "Positions fetched successfully!", 200
+    except Exception as e:
         print(f"Error: {str(e)}")
         return f"Error: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)
-               
