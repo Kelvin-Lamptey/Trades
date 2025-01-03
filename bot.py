@@ -77,9 +77,19 @@ def detect_signals(data):
         for post in data['posts']:
             description = post['news_description'].lower()
             #print(description)
-            
-            if ('buy' in description or 'sell' in description) and ("active" in description) and ("btc" not in description):
-                print(f"Active signal detected: {description}")
+
+            if ('buy' in description or 'sell' in description):
+                if ("active" in description):
+                    print(f"Active signal detected: {description}")
+                else:
+                    print(f"Signal inactive")
+                    continue
+                if ("btc" not in description):
+                    print("Non btc signal and check enforced")
+                else:
+                    continue
+                if ("gold" in description):
+                    print("This is a gold signal but not check enforced")
                 entry, tps, sl = extract_tp_sl(post['news_description'])
                 nid = post['nid']
                 
